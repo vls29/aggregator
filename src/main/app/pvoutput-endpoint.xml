@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:quartz="http://www.mulesoft.org/schema/mule/quartz" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.5.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/quartz http://www.mulesoft.org/schema/mule/quartz/current/mule-quartz.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+
+    <sub-flow name="PvOutputEndpoint" doc:name="PvOutputEndpoint">
+        <logger level="DEBUG" message="#[payload]" doc:name="Logger"/>
+        <logger level="DEBUG" message="#[message]" doc:name="Logger"/>
+        <logger level="INFO" message="About to send data to PvOutput: '#[DatabaseDate] #[DatabaseTime]'" doc:name="Logger"/>
+        <http:outbound-endpoint exchange-pattern="request-response"
+        						address="${pvoutput.endpoint}"
+        						method="POST"
+        						doc:name="HTTP"
+        						connector-ref="PvOutputHttpConnector"
+        						mimeType="application/x-www-form-urlencoded">
+        	<set-property propertyName="Connection" value="close" />
+	        <set-property propertyName="X-Pvoutput-Apikey" value="${X-Pvoutput-Apikey}" />
+	        <set-property propertyName="X-Pvoutput-SystemId" value="${X-Pvoutput-SystemId}" />
+        </http:outbound-endpoint>
+    </sub-flow>
+    
+</mule>

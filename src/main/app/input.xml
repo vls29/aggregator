@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:servlet="http://www.mulesoft.org/schema/mule/servlet" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.5.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/servlet http://www.mulesoft.org/schema/mule/servlet/current/mule-servlet.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+
+    <flow name="input-data" doc:name="input-data">
+        <composite-source doc:name="Composite Source">
+            <vm:inbound-endpoint exchange-pattern="one-way" path="pvoutput-data" doc:name="vm-pvoutput-data">
+				<http:body-to-parameter-map-transformer doc:name="Body to Parameter Map"/>
+			</vm:inbound-endpoint>
+            <servlet:inbound-endpoint path="/data/store/v1_0" responseTimeout="10000" doc:name="servlet-pvoutput-data">
+            	<expression-component>#[
+            		payload = message.inboundProperties['request.parameters'];
+            	]</expression-component>
+            </servlet:inbound-endpoint>
+        </composite-source>
+        <async doc:name="Async">
+			<flow-ref name="input-flow" doc:name="Flow Reference"/>
+	    </async>
+        <http:response-builder status="200" contentType="text/plain" doc:name="HTTP Response Builder"/>
+    </flow>
+    <sub-flow name="input-flow" doc:name="input-flow">
+		<logger message="Received Request" level="INFO" doc:name="Logger"/>
+    	<logger message="#[message]" level="DEBUG" doc:name="Logger"/>
+    	<logger message="#[payload]" level="DEBUG" doc:name="Logger"/>
+        <choice doc:name="Choice">
+	        <when expression="#[message.inboundProperties['X-Data-Source'] == null]">
+		        <logger message="No Data Source in Request" level="WARN" doc:name="Logger"/>
+	        </when>
+	        <otherwise>
+		        <set-variable variableName="Received" value="#[new java.util.GregorianCalendar()]" doc:name="Received Date Time"/>
+		        <set-variable variableName="Source" value="#[DataSource.valueOf(message.inboundProperties['X-Data-Source'])]" doc:name="Source"/>
+		        <logger message="#[message]" level="DEBUG" doc:name="Logger"/>
+		        <logger message="Received #[Source] Data: #[payload]" level="INFO" doc:name="Logger"/>
+		        <choice doc:name="Source Choice">
+		            <when expression="#[Source == DataSource.HOT_WATER]">
+		                <expression-transformer doc:name="Hot Water" expression="#[new HotWaterData(Received, payload);]" />
+		            </when>
+		            <when expression="#[Source == DataSource.WEATHER]">
+		                <expression-transformer doc:name="Weather" expression="#[new WeatherData(Received, payload);]" />
+		            </when>
+		            <when expression="#[Source == DataSource.INVERTER]">
+		                <expression-transformer doc:name="Inverter" expression="#[new GenerationData(Received, payload);]" />
+		            </when>
+		            <when expression="#[Source == DataSource.METER]">
+		                <expression-transformer doc:name="Meter" expression="#[new MeterData(Received, payload);]" />
+		            </when>
+		            <otherwise>
+		                <logger message="Unexpected Data Source Type: #[Source]" level="ERROR" doc:name="Logger"/>
+		            </otherwise>
+		        </choice>
+		        <logger message="#[message]" level="DEBUG" doc:name="Logger"/>
+		        <logger message="#[payload]" level="DEBUG" doc:name="Logger"/>
+		        <vm:outbound-endpoint exchange-pattern="one-way" doc:name="store" path="store"/>
+	        </otherwise>
+        </choice>
+    </sub-flow>
+</mule>

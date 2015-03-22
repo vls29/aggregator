@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:quartz="http://www.mulesoft.org/schema/mule/quartz" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.5.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/quartz http://www.mulesoft.org/schema/mule/quartz/current/mule-quartz.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+    <flow name="PvOutputUpload" doc:name="PvOutputUpload">
+        <vm:inbound-endpoint exchange-pattern="one-way" path="pvoutput-upload" doc:name="pvoutput"/>
+        <logger level="DEBUG" message="#[payload]" doc:name="Logger"/>
+        <choice doc:name="Choice">
+        	<when expression="#[payload.size() == 1]">
+        		<flow-ref name="PvOutputUploadData" />
+		    </when>
+		    <otherwise>
+		        <logger level="INFO" message="No data to upload" doc:name="Logger"/>
+		    </otherwise>
+		</choice>
+    </flow>
+    
+    <flow name="PvOutputUploadData">
+        <set-payload value="#[payload[0]]" doc:name="Set Payload"/>
+        <logger level="DEBUG" message="#[payload]" doc:name="Logger"/>
+        <set-session-variable variableName="UploadedId" value="#[payload['ID']]" doc:name="Variable"/>
+        <set-session-variable variableName="DatabaseDate" value="#[payload['DATE']]" doc:name="Variable"/>
+        <set-session-variable variableName="DatabaseTime" value="#[payload['TIME']]" doc:name="Variable"/>
+        <expression-component doc:name="Convert the date and time to PvOutput format...">#[
+        	payload.put('DATE', payload['DATE'].replace("-", ""));
+        	payload.put('TIME', payload['TIME'].substring(0, 5));
+        ]</expression-component>
+        <transformer ref="AddStatusRequestMapper" doc:name="Transformer Reference"/>
+        <logger level="INFO" message="#[payload]" doc:name="Logger"/>
+        <logger level="DEBUG" message="#[message]" doc:name="Logger"/>
+        <flow-ref name="PvOutputEndpoint" doc:name="Flow Reference"/>
+        <choice doc:name="Choice">
+        	<when expression="#[message.inboundProperties['http.status'] == 200]">
+        		<logger level="INFO" message="Successfully added status to PvOutput: '#[DatabaseDate] #[DatabaseTime]'" doc:name="Logger" />
+	    		<set-variable variableName="PvOutputUploadError" value="false" />
+        		<flow-ref name="MarkDataAsUploaded" doc:name="Flow Reference"/>
+        	</when>
+        	<otherwise>
+        		<flow-ref name="ErrorInPvOutputUploadFlow" doc:name="Flow Reference"/>
+        	</otherwise>
+        </choice>
+        <logger level="INFO" message="Message processed for: '#[DatabaseDate] #[DatabaseTime]'" doc:name="Logger"/>
+		<catch-exception-strategy>
+			<flow-ref name="ErrorInPvOutputUploadFlow" />
+		</catch-exception-strategy>
+    </flow>
+    
+    <sub-flow name="ErrorInPvOutputUploadFlow">
+	    <logger level="ERROR" message="Failed to add status to PvOutput: '#[DatabaseDate] #[DatabaseTime]'" doc:name="Logger" />
+	    <set-variable variableName="PvOutputUploadError" value="true" />
+	    <flow-ref name="MarkDataAsUploaded" />
+    </sub-flow>
+    
+    <sub-flow name="MarkDataAsUploaded" doc:name="MarkDataAsUploaded">
+        <set-variable variableName="PvOutputUpdateQquery" value="UPDATE UPLOADED
+        									SET 
+        										UPLOADED = true,
+        										ERROR = #[PvOutputUploadError]
+        									WHERE
+        										ID = #[UploadedId]" doc:name="Variable" />
+        <logger level="DEBUG" message="#[PvOutputUpdateQquery] " doc:name="Logger"/>
+        <db:update config-ref="HSqlDbConnector" doc:name="Database">
+            <db:dynamic-query>#[PvOutputUpdateQquery]</db:dynamic-query>
+        </db:update>
+    </sub-flow>
+</mule>

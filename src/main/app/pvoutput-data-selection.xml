@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:quartz="http://www.mulesoft.org/schema/mule/quartz" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.5.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/quartz http://www.mulesoft.org/schema/mule/quartz/current/mule-quartz.xsd">
+    <flow name="pvoutputFlow2" doc:name="pvoutputFlow2">
+        <composite-source doc:name="Composite Source">
+            <vm:inbound-endpoint exchange-pattern="one-way" path="pvoutput" doc:name="pvoutput"/>
+            <quartz:inbound-endpoint jobName="Upload" cronExpression="${pvoutput.cron}" connector-ref="Quartz" responseTimeout="10000" doc:name="pvoutput">
+                <quartz:event-generator-job/>
+            </quartz:inbound-endpoint>
+        </composite-source>
+        <set-payload value="#[
+        		Calendar cal = new java.util.GregorianCalendar();
+        		cal.add(Calendar.MINUTE, -2);
+        		cal]" doc:name="Set Payload"/>
+        <logger level="DEBUG" message="#[CalendarUtils.getDate(payload)] #[CalendarUtils.getTime(payload)] " doc:name="Logger"/>
+        <set-variable variableName="MaxHistoricalDate" value="#[
+        		Calendar cal = new java.util.GregorianCalendar();
+        		cal.add(Calendar.DAY_OF_MONTH, -90);
+        		cal]" doc:name="Variable"></set-variable>
+        <set-variable variableName="PvOutputSelectQquery" value="SELECT
+        									TOP 1
+        										U.ID,
+												U.DATE,
+												U.TIME,
+												U.UPLOADED,
+												G.ENERGYGENWATTHRS,
+												G.POWERGENWATTS,
+												H.HOTWATER,
+												CASE H.IMMERSION 
+													WHEN true THEN 10
+													ELSE 0
+												END AS IMMERSION,
+												M.IMPORTWATTS,
+												W.WINDSPEED, 
+												W.GUSTSPEED
+											FROM 
+												UPLOADED AS U
+													LEFT OUTER JOIN GENERATION AS G ON G.DATE = U.DATE AND G.TIME = U.TIME
+													LEFT OUTER JOIN HOTWATER AS H ON H.DATE = U.DATE AND H.TIME = U.TIME
+													LEFT OUTER JOIN METER AS M ON M.DATE = U.DATE AND M.TIME = U.TIME
+													LEFT OUTER JOIN WEATHER AS W ON W.DATE = U.DATE AND W.TIME= U.TIME
+											WHERE
+												U.UPLOADED = false
+												AND U.DATE &lt;= '#[CalendarUtils.getDate(payload)]'
+												AND U.DATE &gt;= '#[CalendarUtils.getDate(MaxHistoricalDate)]'
+												AND U.TIME &lt;= '#[CalendarUtils.getTime(payload)]'
+											ORDER BY 
+												U.DATE ASC, 
+												U.TIME ASC" doc:name="Variable" />
+        <logger level="DEBUG" message="#[PvOutputSelectQquery] " doc:name="Logger"/>
+        <db:select config-ref="HSqlDbConnector" doc:name="Database">
+            <db:dynamic-query>#[PvOutputSelectQquery]</db:dynamic-query>
+        </db:select>
+        <logger level="DEBUG" message="#[payload]" doc:name="Logger"/>
+        <logger level="DEBUG" message="#[message]" doc:name="Logger"/>
+        <logger level="DEBUG" message="Send to Upload Data Flow" doc:name="Logger"/>
+        <vm:outbound-endpoint path="pvoutput-upload" doc:name="VM"/>
+    </flow>
+</mule>

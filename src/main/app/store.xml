@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.5.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+    <flow name="storeFlow1" doc:name="storeFlow1">
+        <vm:inbound-endpoint exchange-pattern="one-way"  doc:name="store" path="store"/>
+        <async doc:name="Async">
+            <flow-ref name="store_upload_table" doc:name="Flow Reference"/>
+        </async>
+        <choice doc:name="Choice">
+            <when expression="#[payload instanceof GenerationData]">
+                <db:insert config-ref="HSqlDbConnector" doc:name="Database">
+                    <db:parameterized-query><![CDATA[INSERT INTO GENERATION
+                    									(DATE, TIME, ENERGYGENWATTHRS, POWERGENWATTS)
+                    									VALUES (
+                    										#[CalendarUtils.getDate(payload.received)], 
+                    										#[CalendarUtils.getTime(payload.received)], 
+                    										#[payload.energyGenerationWattHours], 
+                    										#[payload.powerGenerationWatts]
+                    								)]]></db:parameterized-query>
+                </db:insert>
+            </when>
+            <when expression="#[payload instanceof HotWaterData]">
+                <db:insert config-ref="HSqlDbConnector" doc:name="Database">
+                    <db:parameterized-query><![CDATA[INSERT INTO HOTWATER
+                    									(DATE, TIME, HOTWATER, IMMERSION)
+                    									VALUES (
+                    										#[CalendarUtils.getDate(payload.received)], 
+                    										#[CalendarUtils.getTime(payload.received)], 
+                    										#[payload.hotWaterTemperature], 
+                    										#[payload.immersionOn]
+                    								)]]></db:parameterized-query>
+                </db:insert>
+            </when>
+            <when expression="#[payload instanceof MeterData]">
+                <db:insert config-ref="HSqlDbConnector" doc:name="Database">
+                    <db:parameterized-query><![CDATA[INSERT INTO METER
+                    									(DATE, TIME, IMPORTWATTS, EXPORTWATTS)
+                    									VALUES (
+                    										#[CalendarUtils.getDate(payload.received)], 
+                    										#[CalendarUtils.getTime(payload.received)], 
+                    										#[payload.importWatts], 
+                    										#[payload.emportWatts]
+                    								)]]></db:parameterized-query>
+                </db:insert>
+            </when>
+            <when expression="#[payload instanceof WeatherData]">
+                <db:insert config-ref="HSqlDbConnector" doc:name="Database">
+                    <db:parameterized-query><![CDATA[INSERT INTO WEATHER
+                    									(DATE, TIME, WINDSPEED, GUSTSPEED)
+                    									VALUES (
+                    										#[CalendarUtils.getDate(payload.received)], 
+                    										#[CalendarUtils.getTime(payload.received)], 
+                    										#[payload.calculateWindSpeed()], 
+                    										#[payload.calculateGustSpeed()]
+                    								)]]></db:parameterized-query>
+                </db:insert>
+            </when>
+            <otherwise>
+                <logger message="Should never have received an event to put into the database that was not recognised: #[payload]" level="ERROR" doc:name="Logger"/>
+            </otherwise>
+        </choice>
+    </flow>
+    <flow name="store_upload_table" doc:name="store_upload_table">
+    	<set-variable variableName="ReceivedDateTime" value="#[payload.received]" doc:name="Variable"/>
+        <db:select config-ref="HSqlDbConnector" doc:name="Database">
+            <db:dynamic-query>SELECT COUNT(*) AS CNT
+            				  FROM UPLOADED
+            				  WHERE
+            				  		DATE = '#[CalendarUtils.getDate(ReceivedDateTime)]'
+            				  		AND TIME = '#[CalendarUtils.getTime(ReceivedDateTime)]'</db:dynamic-query>
+        </db:select>
+        <set-payload value="#[payload[0]['CNT']]" />
+        <logger level="DEBUG" message="#[payload]" doc:name="Logger"/>
+        <expression-filter expression="#[payload == 0]" doc:name="Expression"/>
+        <db:insert config-ref="HSqlDbConnector" doc:name="Database">
+            <db:parameterized-query><![CDATA[INSERT INTO UPLOADED
+            									(DATE, TIME, UPLOADED)
+            									VALUES (#[CalendarUtils.getDate(ReceivedDateTime)], 
+                    								#[CalendarUtils.getTime(ReceivedDateTime)], 
+                    								false)]]></db:parameterized-query>
+        </db:insert>
+        <catch-exception-strategy doc:name="Catch Exception Strategy">
+            <logger message="Duplicate entry for #[payload.receivedDateTime]" level="DEBUG" doc:name="Logger"/>
+        </catch-exception-strategy>
+    </flow>
+</mule>

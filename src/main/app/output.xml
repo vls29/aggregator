@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:quartz="http://www.mulesoft.org/schema/mule/quartz" xmlns:servlet="http://www.mulesoft.org/schema/mule/servlet" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:context="http://www.springframework.org/schema/context" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="3.4.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/servlet http://www.mulesoft.org/schema/mule/servlet/current/mule-servlet.xsd
+http://www.mulesoft.org/schema/mule/quartz http://www.mulesoft.org/schema/mule/quartz/current/mule-quartz.xsd">
+    <vm:endpoint exchange-pattern="one-way" path="ExtraDataQ" name="ExtraDataVmEndpoint" doc:name="VM"/>
+    
+    <vm:endpoint exchange-pattern="one-way" path="PvOutputQ" name="PvOutputVmEndpoint" doc:name="VM"/>
+    <file:endpoint path="${pvoutput.sentDataCopy.path}" outputPattern="#[function:datestamp:yyyy-MM-dd].csv" name="FileOutboundEndpoint" responseTimeout="10000" connector-ref="FileConnector" doc:name="File"/>
+    <flow name="OutputFlow" doc:name="OutputFlow">
+        <quartz:inbound-endpoint responseTimeout="10000" doc:name="Quartz" connector-ref="Quartz" cronExpression="0 0/1 * 1/1 * ? *" jobName="UploadJob">
+        	<quartz:event-generator-job />
+        </quartz:inbound-endpoint>
+        <component doc:name="Java">
+        	<spring-object bean="collectionDataService" />
+        </component>
+        
+        <foreach doc:name="For Each">
+	        <all doc:name="All">
+	            <processor-chain>
+	        		<transformer ref="FileDataTransformer" doc:name="Transformer Reference"/>
+	                <append-string-transformer message="&#xD;&#xA;" doc:name="Append String"/>
+	                <file:outbound-endpoint responseTimeout="10000" connector-ref="FileConnector" ref="FileOutboundEndpoint" doc:name="File"/>
+	            </processor-chain>
+	            <processor-chain>
+	        		<transformer ref="ServiceDataTransformer" doc:name="Transformer Reference"/>
+	                <message-properties-transformer doc:name="Message Properties">
+	                    <add-message-property key="X-Pvoutput-Apikey" value="${X-Pvoutput-Apikey}"/>
+	                    <add-message-property key="X-Pvoutput-SystemId" value="${X-Pvoutput-SystemId}"/>
+	                </message-properties-transformer>
+	                <http:outbound-endpoint exchange-pattern="request-response" method="POST" address="${pvoutput.endpoint}" connector-ref="PvOutputHttpConnector" contentType="application/x-www-form-urlencoded" doc:name="HTTP"/>
+	            </processor-chain>
+	        </all>
+        </foreach>
+    </flow>
+</mule>

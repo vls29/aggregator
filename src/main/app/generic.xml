@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:quartz="http://www.mulesoft.org/schema/mule/quartz" xmlns:servlet="http://www.mulesoft.org/schema/mule/servlet" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:context="http://www.springframework.org/schema/context" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.5.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/servlet http://www.mulesoft.org/schema/mule/servlet/current/mule-servlet.xsd
+http://www.mulesoft.org/schema/mule/quartz http://www.mulesoft.org/schema/mule/quartz/current/mule-quartz.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+    <http:connector name="GenericHttpConnector" cookieSpec="netscape" validateConnections="true" sendBufferSize="0" receiveBufferSize="0" receiveBacklog="0" clientSoTimeout="10000" serverSoTimeout="10000" socketSoLinger="0" doc:name="HTTP\HTTPS"/>
+    <http:connector name="PvOutputHttpConnector" cookieSpec="netscape" validateConnections="true" sendBufferSize="0" receiveBufferSize="0" receiveBacklog="0" clientSoTimeout="10000" serverSoTimeout="10000" socketSoLinger="0" doc:name="HTTP\HTTPS"/>
+    <file:connector name="FileConnector"  outputAppend="true" validateConnections="true" doc:name="File" autoDelete="true" streaming="true" />
+    <quartz:connector name="Quartz" validateConnections="true" doc:name="Quartz">
+	     <quartz:factory-property key="org.quartz.scheduler.instanceName" value="MuleScheduler1"/>  
+	     <quartz:factory-property key="org.quartz.threadPool.class" value="org.quartz.simpl.SimpleThreadPool"/>  
+	     <quartz:factory-property key="org.quartz.threadPool.threadCount" value="3"/>  
+	     <quartz:factory-property key="org.quartz.scheduler.rmi.proxy" value="false"/>  
+	     <quartz:factory-property key="org.quartz.scheduler.rmi.export" value="false"/>  
+	     <quartz:factory-property key="org.quartz.jobStore.class" value="org.quartz.simpl.RAMJobStore"/>  
+    </quartz:connector>
+    
+    <db:generic-config name="HSqlDbConnector" dataSource-ref="HSqlDbDataSource" doc:name="Generic Database Configuration" />
+    <spring:beans>
+        <spring:bean id="HSqlDbDataSource" name="HSqlDbDataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+	        <spring:property name="url" value="jdbc:hsqldb:file:${hsqldb.file.path}"/>
+	        <spring:property name="driverClassName" value="org.hsqldb.jdbc.JDBCDriver"/>
+	        <spring:property name="username" value="${hsqldb.username}"/>
+	        <spring:property name="password" value="${hsqldb.password}"/>
+        </spring:bean>
+        <spring:bean id="jdbcTemplate" name="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        	<spring:property name="dataSource" ref="HSqlDbDataSource" />
+        </spring:bean>
+        <spring:bean id="AddStatusRequestMapper" name="AddStatusRequestMapper"
+        			 class="uk.co.vsf.aggregator.pvoutput.mapper.AddStatusRequestMapper"
+        			 init-method="init">
+        	<spring:property name="mappingFileData" value="classpath:/AddStatusMapping.xml" />
+        </spring:bean>
+    </spring:beans>
+    
+    <configuration doc:name="Configuration">
+		<expression-language autoResolveVariables="true">
+			<import class="uk.co.vsf.aggregator.domain.DataSource"/>
+			<import class="uk.co.vsf.aggregator.domain.HotWaterData"/>
+			<import class="uk.co.vsf.aggregator.domain.WeatherData"/>
+			<import class="uk.co.vsf.aggregator.domain.GenerationData"/>
+			<import class="uk.co.vsf.aggregator.domain.MeterData"/>
+			<import class="uk.co.vsf.aggregator.CalendarUtils"/>
+			<import class="java.util.Calendar"/>
+			<import class="java.util.GregorianCalendar"/>
+		</expression-language>
+	</configuration>
+</mule>
