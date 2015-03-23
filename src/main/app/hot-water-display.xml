@@ -12,8 +12,14 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
             <servlet:inbound-endpoint path="/hot-water-display" responseTimeout="10000" doc:name="Servlet"/>
             <vm:inbound-endpoint exchange-pattern="request-response" path="hot-water-display" doc:name="VM"/>
         </composite-source>
+        <set-variable variableName="MaxHistoricalDate" value="#[
+        		Calendar cal = new java.util.GregorianCalendar();
+        		cal.add(Calendar.DAY_OF_MONTH, -2);
+        		cal]" doc:name="Variable"></set-variable>
+        <set-variable variableName="HotWaterDisplaySelectQquery" value="SELECT TOP 5 * FROM HOTWATER WHERE DATE &gt;= '#[CalendarUtils.getDate(MaxHistoricalDate)]' ORDER BY DATE DESC, TIME DESC"></set-variable>
+        <logger level="INFO" message="Selecting data for Hot Water display" />
         <db:select config-ref="HSqlDbConnector" doc:name="Database">
-            <db:parameterized-query><![CDATA[SELECT TOP 5 * FROM HOTWATER ORDER BY TIMESTAMP(DATE, TIME) DESC]]></db:parameterized-query>
+            <db:dynamic-query>#[HotWaterDisplaySelectQquery]</db:dynamic-query>
         </db:select>
         <logger level="INFO" message="Hot Water Display Query Response: #[payload]" />
         <component doc:name="Java">
