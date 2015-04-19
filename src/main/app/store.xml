@@ -40,12 +40,13 @@ http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/cu
             <when expression="#[payload instanceof MeterData]">
                 <db:insert config-ref="HSqlDbConnector" doc:name="Database">
                     <db:parameterized-query><![CDATA[INSERT INTO METER
-                    									(DATE, TIME, IMPORTWATTS, EXPORTWATTS)
+                    									(DATE, TIME, IMPORTWATTS, EXPORTWATTS, MAINSVOLTAGE)
                     									VALUES (
                     										#[CalendarUtils.getDate(payload.received)], 
                     										#[CalendarUtils.getTime(payload.received)], 
                     										#[payload.importWatts], 
-                    										#[payload.emportWatts]
+                    										#[payload.emportWatts], 
+                    										#[payload.mainsVoltage]
                     								)]]></db:parameterized-query>
                 </db:insert>
             </when>

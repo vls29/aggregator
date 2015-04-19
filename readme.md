@@ -11,4 +11,4 @@ It aggregates a number of different data sources into an HSQLDB and then every 1
 
 More info?
 ---
-See my blog: http://blog.v-s-f.co.uk/2015/02/hot-water-tank-temperature-on-arduino-lcd/
+See my blog: http://blog.v-s-f.co.uk/

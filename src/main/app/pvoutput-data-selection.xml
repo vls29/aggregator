@@ -38,6 +38,7 @@ http://www.mulesoft.org/schema/mule/quartz http://www.mulesoft.org/schema/mule/q
 													ELSE 0
 												END AS IMMERSION,
 												M.IMPORTWATTS,
+												M.MAINSVOLTAGE,
 												W.WINDSPEED, 
 												W.GUSTSPEED
 											FROM 

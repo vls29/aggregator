@@ -16,6 +16,7 @@ public class MeterData extends DefaultReadingData {
     private BigDecimal exportImpulses;
     private BigDecimal exportMultiplier;
     private BigDecimal msBetweenCalls;
+    private BigDecimal mainsVoltage;
 
     private BigDecimal importWatts;
 
@@ -37,6 +38,10 @@ public class MeterData extends DefaultReadingData {
             this.msBetweenCalls = new BigDecimal("60000");
         } else {
             this.msBetweenCalls = new BigDecimal(data.get("msBetweenCalls").trim());
+        }
+
+        if (!StringUtils.isBlank(data.get("mainsVoltage"))) {
+            this.mainsVoltage = new BigDecimal(data.get("mainsVoltage").trim());
         }
     }
 
@@ -78,5 +83,9 @@ public class MeterData extends DefaultReadingData {
 
     public BigDecimal getExportMultiplier() {
         return exportMultiplier;
+    }
+
+    public BigDecimal getMainsVoltage() {
+        return mainsVoltage;
     }
 }
