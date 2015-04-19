@@ -8,8 +8,9 @@ $generationImpulses = $_POST["generationImpulses"];
 $msBetweenCalls = $_POST["msBetweenCalls"];
 $importMultiplier = $_POST["importMultiplier"];
 $generationMultiplier = $_POST["generationMultiplier"];
+$mainsVoltage = $_POST["mainsVoltage"];
 
-$myvars = 'importImpulses=' . $importImpulses . '&generationImpulses=' . $generationImpulses . '&msBetweenCalls=' . $msBetweenCalls . '&importMultiplier=' . $importMultiplier . '&generationMultiplier=' . $generationMultiplier;
+$myvars = 'importImpulses=' . $importImpulses . '&generationImpulses=' . $generationImpulses . '&msBetweenCalls=' . $msBetweenCalls . '&importMultiplier=' . $importMultiplier . '&generationMultiplier=' . $generationMultiplier . '&mainsVoltage=' . $mainsVoltage;
 
 $ch = curl_init( $url );
 curl_setopt( $ch, CURLOPT_POST, 1);
