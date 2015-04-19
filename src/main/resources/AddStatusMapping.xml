@@ -28,7 +28,7 @@
 		<pvoutput>v5</pvoutput>
 	</mapping>
 	<mapping>
-		<database>VOLTAGE</database>
+		<database>MAINSVOLTAGE</database>
 		<pvoutput>v6</pvoutput>
 	</mapping>
 	<mapping>
