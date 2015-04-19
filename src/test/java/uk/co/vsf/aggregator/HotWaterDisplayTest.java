@@ -175,7 +175,7 @@ public class HotWaterDisplayTest extends AbstractDatabaseTest {
     }
 
     @Test
-    public void getDisplayData_NoReadsingsSince() throws MuleException, Exception {
+    public void getDisplayData_NoReadsingsToday() throws MuleException, Exception {
         assertEquals(0, rowCount(TABLE_HOT_WATER));
 
         MuleClient client = new MuleClient(muleContext);
@@ -205,6 +205,63 @@ public class HotWaterDisplayTest extends AbstractDatabaseTest {
         data.put("t", temperature.toPlainString());
         data.put("i", immersion.toString());
         HotWaterData hotWaterData5 = new HotWaterData(new GregorianCalendar(2015, 0, 03, 1, 06), data);
+
+        Map<String, Object> properties = new HashMap<String, Object>();
+        MuleMessage message1 = new DefaultMuleMessage(hotWaterData1, properties, muleContext);
+        MuleMessage message2 = new DefaultMuleMessage(hotWaterData2, properties, muleContext);
+        MuleMessage message3 = new DefaultMuleMessage(hotWaterData3, properties, muleContext);
+        MuleMessage message4 = new DefaultMuleMessage(hotWaterData4, properties, muleContext);
+        MuleMessage message5 = new DefaultMuleMessage(hotWaterData5, properties, muleContext);
+
+        client.send("vm://store", message1);
+        client.send("vm://store", message2);
+        client.send("vm://store", message3);
+        client.send("vm://store", message4);
+        client.send("vm://store", message5);
+        
+        Thread.sleep(5000);
+        MuleMessage outputMessage = new DefaultMuleMessage("", properties, muleContext);
+        
+        MuleMessage output = client.send("vm://hot-water-display", outputMessage);
+        String response = ((HttpResponse)output.getPayload()).getBodyAsString();
+        System.out.println(response);
+        assertTrue(response.contains("No readings today"));
+    }
+
+    @Test
+    public void getDisplayData_NoReadsingsSince() throws MuleException, Exception {
+        assertEquals(0, rowCount(TABLE_HOT_WATER));
+
+        MuleClient client = new MuleClient(muleContext);
+
+        BigDecimal temperature = new BigDecimal("40.56");
+        BigInteger immersion = new BigInteger("10");
+
+        Map<String, String> data = new HashMap<String, String>();
+        data.put("t", temperature.toPlainString());
+        data.put("i", immersion.toString());
+        
+        Calendar cal = new GregorianCalendar();
+        
+        HotWaterData hotWaterData1 = new HotWaterData(new GregorianCalendar(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH), 1, 02), data);
+        HotWaterData hotWaterData2 = new HotWaterData(new GregorianCalendar(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH), 1, 03), data);
+        HotWaterData hotWaterData3 = new HotWaterData(new GregorianCalendar(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH), 1, 04), data);
+        
+        temperature = new BigDecimal("40.55");
+        immersion = new BigInteger("10");
+        
+        data = new HashMap<String, String>();
+        data.put("t", temperature.toPlainString());
+        data.put("i", immersion.toString());
+        HotWaterData hotWaterData4 = new HotWaterData(new GregorianCalendar(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH), 1, 05), data);
+        
+        temperature = new BigDecimal("40.54");
+        immersion = new BigInteger("10");
+        
+        data = new HashMap<String, String>();
+        data.put("t", temperature.toPlainString());
+        data.put("i", immersion.toString());
+        HotWaterData hotWaterData5 = new HotWaterData(new GregorianCalendar(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH), 1, 06), data);
 
         Map<String, Object> properties = new HashMap<String, Object>();
         MuleMessage message1 = new DefaultMuleMessage(hotWaterData1, properties, muleContext);

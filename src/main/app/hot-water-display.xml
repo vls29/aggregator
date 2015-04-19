@@ -22,11 +22,18 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
             <db:dynamic-query>#[HotWaterDisplaySelectQquery]</db:dynamic-query>
         </db:select>
         <logger level="INFO" message="Hot Water Display Query Response: #[payload]" />
-        <component doc:name="Java">
-            <singleton-object class="uk.co.vsf.aggregator.component.HotWaterDisplayComponent">
-                <property key="maxTimeSinceLastReadingMinutes" value="${maxTimeSinceLastReadingMinutes}"/>
-            </singleton-object>
-        </component>
+        <choice>
+        	<when expression="#[payload.size() == 0]">
+        		<set-payload value="No readings today" />
+        	</when>
+        	<otherwise>
+        		<component doc:name="Java">
+		            <singleton-object class="uk.co.vsf.aggregator.component.HotWaterDisplayComponent">
+		                <property key="maxTimeSinceLastReadingMinutes" value="${maxTimeSinceLastReadingMinutes}"/>
+		            </singleton-object>
+		        </component>
+        	</otherwise>
+        </choice>
         <http:response-builder status="200" contentType="text/plain" doc:name="HTTP Response Builder">
             <http:cache-control noCache="true" noStore="true" mustRevalidate="true"/>
         </http:response-builder>

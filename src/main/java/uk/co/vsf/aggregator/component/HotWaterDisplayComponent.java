@@ -62,10 +62,10 @@ public class HotWaterDisplayComponent {
         boolean immersionStatus = (Boolean) hotWaterData.get(0).get("IMMERSION");
         BigDecimal hotWater2 = (BigDecimal) hotWaterData.get(1).get("HOTWATER");
         BigDecimal hotWater3 = (BigDecimal) hotWaterData.get(2).get("HOTWATER");
-        BigDecimal hotWater4 = (BigDecimal) hotWaterData.get(3).get("HOTWATER");
-        BigDecimal hotWater5 = (BigDecimal) hotWaterData.get(4).get("HOTWATER");
+        //BigDecimal hotWater4 = (BigDecimal) hotWaterData.get(3).get("HOTWATER");
+        //BigDecimal hotWater5 = (BigDecimal) hotWaterData.get(4).get("HOTWATER");
 
-        HotWaterStatus status = getHotWaterStatus(hotWater1, hotWater2, hotWater3, hotWater4, hotWater5);
+        HotWaterStatus status = getHotWaterStatus(hotWater1, hotWater2, hotWater3);
         String date = (String) hotWaterData.get(0).get("DATE");
         String time = (String) hotWaterData.get(0).get("TIME");
         String dateTime = DateTimeUtils.formatDateTime(date, time);
@@ -89,8 +89,7 @@ public class HotWaterDisplayComponent {
                 TemperatureDescription.getTemperatureDescriptionFor(hotWaterTemperature));
     }
 
-    protected HotWaterStatus getHotWaterStatus(BigDecimal hotWater1, BigDecimal hotWater2, BigDecimal hotWater3, BigDecimal hotWater4,
-            BigDecimal hotWater5) {
+    protected HotWaterStatus getHotWaterStatus(BigDecimal hotWater1, BigDecimal hotWater2, BigDecimal hotWater3) {
         if (hotWater1.compareTo(hotWater2) > 0) {
             if (hotWater2.compareTo(hotWater3) > 0) {
                 return HotWaterStatus.INCREASING;
